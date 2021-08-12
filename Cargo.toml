@@ -18,3 +18,5 @@ gvars-macro = { path = "./macro", version = "0.1.0"}
 enable-for-debug = ["lazy_static", "linkme"]
 # Enable regardless of `cfg!(debug_assertions)`
 enable-always = ["enable-for-debug"]
+
+default = ["enable-for-debug"]
