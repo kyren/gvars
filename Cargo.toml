@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/gvars-macro/",
+    "src/gvars/",
+]

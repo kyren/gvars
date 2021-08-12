@@ -1,0 +1,5 @@
+/target
+Cargo.lock
+.dir-locals.el
+.envrc
+shell.nix
