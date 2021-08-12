@@ -20,5 +20,6 @@ fn basic() {
         let metadata = gvars::metadata();
         assert_eq!(metadata.len(), 1);
         assert_eq!(metadata[0].unique_name, "basic::TEST");
+        assert_eq!(metadata[0].type_id, std::any::TypeId::of::<u32>());
     }
 }
