@@ -1,7 +1,11 @@
-use crate::{SetError, Metadata};
+use crate::{GetError, Metadata, SetError};
 
 pub fn metadata() -> &'static [Metadata] {
     &[]
+}
+
+pub fn get(_name: &str) -> Result<String, GetError> {
+    Err(GetError::Disabled)
 }
 
 pub fn set(_name: &str, _val: &str) -> Result<(), SetError> {

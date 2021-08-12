@@ -1,4 +1,4 @@
-use crate::{DeserializeError, GVar, Metadata, SetError};
+use crate::{FromStrError, GVar, GetError, Metadata, SetError};
 use std::{
     any::TypeId,
     collections::HashMap,
@@ -9,16 +9,21 @@ pub fn metadata() -> &'static [Metadata] {
     &FIELDS.1
 }
 
+pub fn get(name: &str) -> Result<String, GetError> {
+    Ok(FIELDS
+        .0
+        .get(name)
+        .ok_or(GetError::NoSuchField)?
+        .get_string())
+}
+
 pub fn set(name: &str, val: &str) -> Result<(), SetError> {
     FIELDS
         .0
         .get(name)
         .ok_or(SetError::NoSuchField)?
-        .set(
-            &mut ron::Deserializer::from_str(val)
-                .map_err(|e| SetError::Deserialization(e.into()))?,
-        )
-        .map_err(|e| SetError::Deserialization(e.into()))
+        .set(val)
+        .map_err(|e| SetError::FromStr(e))
 }
 
 #[doc(hidden)]
@@ -26,7 +31,8 @@ pub struct Field {
     pub unique_name: &'static str,
     pub aliases: &'static [&'static str],
     pub type_id: TypeId,
-    pub setter: fn(&mut ron::Deserializer) -> Result<*const (), DeserializeError>,
+    pub setter: fn(&str) -> Result<*const (), FromStrError>,
+    pub getter: unsafe fn(*const ()) -> String,
     pub ptr: AtomicPtr<()>,
 }
 
@@ -36,9 +42,13 @@ impl Field {
         aliases: &'static [&'static str],
         init: &'static T,
     ) -> Self {
-        fn set<T: GVar>(de: &mut ron::Deserializer) -> Result<*const (), DeserializeError> {
-            let t = T::deserialize(de)?;
+        fn set<T: GVar>(s: &str) -> Result<*const (), FromStrError> {
+            let t = T::from_str(s)?;
             Ok(Box::leak(Box::new(t)) as *const T as *const ())
+        }
+
+        unsafe fn get<T: GVar>(ptr: *const ()) -> String {
+            (*(ptr as *const T)).to_string()
         }
 
         Self {
@@ -46,6 +56,7 @@ impl Field {
             aliases,
             type_id: TypeId::of::<T>(),
             setter: set::<T>,
+            getter: get::<T>,
             ptr: AtomicPtr::new(init as *const T as *mut ()),
         }
     }
@@ -55,10 +66,14 @@ impl Field {
         unsafe { &*(self.ptr.load(Ordering::Relaxed) as *const T) }
     }
 
-    pub fn set(&self, deserializer: &mut ron::Deserializer) -> Result<(), DeserializeError> {
+    pub fn set(&self, s: &str) -> Result<(), FromStrError> {
         self.ptr
-            .store((self.setter)(deserializer)? as *mut (), Ordering::Relaxed);
+            .store((self.setter)(s)? as *mut (), Ordering::Relaxed);
         Ok(())
+    }
+
+    pub fn get_string(&self) -> String {
+        unsafe { (self.getter)(self.ptr.load(Ordering::Relaxed)) }
     }
 }
 
@@ -110,7 +125,9 @@ macro_rules! make {
                 Field::new(FULL_NAME, &[SHORT_NAME, $($alias,)*], &INITIAL)
             }
 
-            impl std::ops::Deref for $name {
+            impl std::ops::Deref for $name
+                where $ty: $crate::GVar
+            {
                 type Target = $ty;
 
                 fn deref(&self) -> &Self::Target {

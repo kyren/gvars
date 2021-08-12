@@ -10,12 +10,14 @@ fn basic() {
 
         gvars::set("TEST", "4").unwrap();
         assert_eq!(*TEST, 4);
+        assert_eq!(gvars::get("basic::TEST").unwrap(), "4");
 
         gvars::set("test-alias", "7").unwrap();
         assert_eq!(*TEST, 7);
 
         gvars::set("test-alias2", "13").unwrap();
         assert_eq!(*TEST, 13);
+        assert_eq!(gvars::get("test-alias").unwrap(), "13");
 
         let metadata = gvars::metadata();
         assert_eq!(metadata.len(), 1);
