@@ -18,9 +18,9 @@ macro_rules! make {
     ($vis:vis, $name:ident, $ty:ty, $init:expr, $($alias:expr),*) => {
         $vis struct $name;
 
-        impl std::ops::Deref for $name
-            where $ty: $crate::GVar,
-        {
+        $crate::assert_gvar!($ty);
+
+        impl std::ops::Deref for $name {
             type Target = $ty;
 
             fn deref(&self) -> &'static Self::Target {

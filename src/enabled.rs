@@ -112,6 +112,8 @@ macro_rules! make {
     ($vis:vis, $name:ident, $ty:ty, $init:expr, $($alias:expr),*) => {
         $vis struct $name;
 
+        $crate::assert_gvar!($ty);
+
         const _: () = {
             use std::any::Any;
             use $crate::{Field, linkme, FIELDS, FIELD_INITS};
@@ -125,9 +127,7 @@ macro_rules! make {
                 Field::new(FULL_NAME, &[SHORT_NAME, $($alias,)*], &INITIAL)
             }
 
-            impl std::ops::Deref for $name
-                where $ty: $crate::GVar
-            {
+            impl std::ops::Deref for $name {
                 type Target = $ty;
 
                 fn deref(&self) -> &Self::Target {

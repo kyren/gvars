@@ -3,6 +3,7 @@ use std::{
     any::{Any, TypeId},
     error::Error,
     fmt,
+    marker::PhantomData,
     str::FromStr,
 };
 
@@ -84,6 +85,18 @@ impl fmt::Display for GetError {
 }
 
 impl Error for GetError {}
+
+#[doc(hidden)]
+pub struct AssertGVar<T: GVar>(pub PhantomData<T>);
+
+#[macro_export]
+macro_rules! assert_gvar {
+    ($ty:ty) => {
+        const _: () = {
+            struct A($crate::AssertGVar<$ty>);
+        };
+    };
+}
 
 cfg_if::cfg_if! {
     if #[cfg(any(all(feature = "enable-for-debug", debug_assertions), feature = "enable-always"))] {
