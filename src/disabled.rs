@@ -23,6 +23,7 @@ macro_rules! make {
         impl std::ops::Deref for $name {
             type Target = $ty;
 
+            #[inline]
             fn deref(&self) -> &'static Self::Target {
                 const VAL: $ty = $init;
                 &VAL

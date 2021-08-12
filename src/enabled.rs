@@ -61,6 +61,7 @@ impl Field {
         }
     }
 
+    #[inline]
     pub fn get<T>(&self) -> &'static T {
         assert_eq!(self.type_id, TypeId::of::<T>());
         unsafe { &*(self.ptr.load(Ordering::Relaxed) as *const T) }
@@ -130,6 +131,7 @@ macro_rules! make {
             impl std::ops::Deref for $name {
                 type Target = $ty;
 
+                #[inline]
                 fn deref(&self) -> &Self::Target {
                     FIELDS.0.get(FULL_NAME).unwrap().get::<$ty>()
                 }
