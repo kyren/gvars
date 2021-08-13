@@ -2,7 +2,10 @@ use crate::{FromStrError, GVar, GetError, Metadata, SetError};
 use std::{
     any::TypeId,
     collections::HashMap,
-    sync::atomic::{AtomicPtr, Ordering},
+    sync::{
+        atomic::{AtomicPtr, Ordering},
+        Mutex,
+    },
 };
 
 pub fn metadata() -> &'static [Metadata] {
@@ -79,19 +82,19 @@ impl Field {
 }
 
 #[doc(hidden)]
-pub use linkme;
+pub use ctor::ctor;
 
 #[doc(hidden)]
-#[linkme::distributed_slice]
-pub static FIELD_INITS: [fn() -> Field] = [..];
+lazy_static::lazy_static! {
+    pub static ref INIT_FIELDS: Mutex<Vec<Field>> = Mutex::new(Vec::new());
+}
 
 lazy_static::lazy_static! {
     #[doc(hidden)]
     pub static ref FIELDS: (HashMap<&'static str, &'static Field>, Vec<Metadata>) = {
         let mut map = HashMap::new();
         let mut met = Vec::new();
-        for &f in FIELD_INITS.iter() {
-            let field = (f)();
+        for field in INIT_FIELDS.try_lock().unwrap().drain(..) {
             let field: &'static Field = Box::leak(Box::new(field));
             assert!(map.insert(field.unique_name, field).is_none(), "unique field name is not unique");
             met.push(Metadata {
@@ -117,15 +120,15 @@ macro_rules! make {
 
         const _: () = {
             use std::any::Any;
-            use $crate::{Field, linkme, FIELDS, FIELD_INITS};
+            use $crate::{Field, ctor, FIELDS, INIT_FIELDS};
 
             const FULL_NAME: &'static str = concat!(module_path!(), "::", stringify!($name));
             const SHORT_NAME: &'static str = stringify!($name);
 
-            #[linkme::distributed_slice(FIELD_INITS)]
-            fn field_init() -> Field {
+            #[ctor]
+            fn add_field() {
                 const INITIAL: $ty = $init;
-                Field::new(FULL_NAME, &[SHORT_NAME, $($alias,)*], &INITIAL)
+                INIT_FIELDS.try_lock().unwrap().push(Field::new(FULL_NAME, &[SHORT_NAME, $($alias,)*], &INITIAL));
             }
 
             impl std::ops::Deref for $name {
